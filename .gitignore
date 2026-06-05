@@ -1,0 +1,31 @@
+# Jupyter
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Brightway2 project backups & databases (large / licensed — keep out of git)
+*.tar.gz
+*.bw2package
+
+# Generated outputs
+Model_results_*.csv
+GSA_results*.csv
+GSA_heatmap.png
+results*.xlsx
+
+# Large input sample matrices (regenerate from the Presampling section)
+PROB_X_t0.csv
+PROB_X_t0_elec.csv
+# NOTE: examples/PROB_X_t0_short.csv is intentionally tracked as a small demo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

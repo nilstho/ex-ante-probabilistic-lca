@@ -1,0 +1,13 @@
+# bw2data 3.6.x is incompatible with numpy >= 2 (np.NaN was removed) — pin below 2.
+numpy<2
+brightway2
+bw2data>=3.6,<4
+bw2calc>=1.8,<2
+bw2io
+SALib
+scipy
+pandas
+matplotlib
+seaborn
+jupyterlab
+openpyxl
