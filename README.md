@@ -7,7 +7,9 @@ no dependence on the Activity Browser (AB) scenario engine**.
 
 Built for emerging-technology assessment, where parameters are uncertain *a priori* and
 you want to (a) propagate that uncertainty to the impact result and (b) identify which
-parameters drive it.
+parameters drive it. It implements the Monte Carlo + GSA steps of the
+Safe-and-Sustainable-by-Design framework of **Blanco et al. (2024)** (see
+[Acknowledgments](#acknowledgments)), applied to a III-V/Si tandem PV case study.
 
 It was built for a III‑V/Si tandem photovoltaics case study but is written so it can be
 adapted to **any** parameterised Brightway2 project. See
@@ -138,10 +140,26 @@ See [`environment.yml`](environment.yml).
 
 ---
 
-## Citing / context
+## Acknowledgments
 
-Developed as part of an LCA uncertainty course (III‑V/Si tandem PV case study). If this
-workflow is useful in academic work, a mention is appreciated.
+The III‑V/Si tandem photovoltaics case study, the parameterised model, and the underlying
+**Safe‑and‑Sustainable‑by‑Design (SSbD) global‑sensitivity framework** are the work of
+**Carlos Felipe Blanco** and colleagues at the Institute of Environmental Sciences (CML),
+Leiden University. This repository is a Python reimplementation of the Monte Carlo
+uncertainty propagation and global sensitivity analysis steps of that framework — full
+credit for the method and the case study goes to Carlos and co‑authors.
+
+## References
+
+- Blanco, C. F., Behrens, P., Vijver, M. G., Peijnenburg, W. J. G. M., Quik, J. T. K., &
+  Cucurachi, S. (2024). **A framework for guiding safe and sustainable‑by‑design innovation.**
+  *Journal of Industrial Ecology, 29*(1).
+  https://doi.org/10.1111/jiec.13609
+- Blanco Rocha, C. F. (2022). *Guiding safe and sustainable technological innovation under
+  uncertainty: a case study of III‑V/silicon photovoltaics* (PhD thesis, Leiden University).
+  https://hdl.handle.net/1887/3455392
+
+If you use this workflow in academic work, please cite the framework paper above.
 
 ## License
 
