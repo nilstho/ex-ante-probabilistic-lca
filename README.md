@@ -65,22 +65,34 @@ conda activate bw2-mc-gsa
 jupyter lab MC_workflow.ipynb
 ```
 
-Then run the cells top to bottom:
+### Two notebooks
 
-| Section | Purpose |
+| Notebook | Use it when |
 |---|---|
-| 0 | Imports, **numpy‑version check**, project/database/method setup |
-| 1 | Presampling → `PROB_X_t0.csv` (skip if you already have it) |
-| 2 | Load the sample matrix `X` |
-| 3 | Pre‑index every formula exchange in **all** databases |
-| 4 | **Verification** — 5 scenarios vs the reproducible reference (must show `Diff ≈ 0`) |
-| 5 | Full Monte Carlo run (10 000 iterations) → `Model_results_python.csv` |
-| 6 | Histogram + boxplot of the output distribution |
-| 7 | GSA (Borgonovo δ) → `GSA_results.csv` + `GSA_heatmap.png` |
+| **`MC_workflow.ipynb`** (recommended) | Structured/layered. All case-specific settings live in two layers at the top (environment binding + a declarative **parameter registry**); a validation gate auto-checks parameters against the model formulas. Best for adapting to new cases. |
+| `MC_workflow_simple.ipynb` | Minimal, everything inline. Good for a quick read of the bare mechanism. |
 
-> **Always run Section 4 first.** If the 5 verification scores match the reference, the
-> full run will too. If they don't, stop and check the kernel/numpy version and that all
-> databases are scanned.
+Run the structured notebook top to bottom — the layers:
+
+| Layer | Purpose | Edit? |
+|---|---|---|
+| 1 | Imports, **numpy‑version check**, project/databases/FU/method | per project |
+| 2 | **Parameter registry** — one declarative table of parameters + distributions | **most often** |
+| 3 | Presampling → `PROB_X_t0.csv` (generic; skip if you have it) | rarely |
+| 4 | Load the sample matrix `X` | never |
+| 5 | Index formula exchanges in **all** DBs + **validation gate** + introspection table | never |
+| 6 | Engine + **verification** (5 scenarios vs the reproducible reference) | set ref once |
+| 7 | Full Monte Carlo run (10 000 iterations) → `Model_results_python.csv` | never |
+| 8 | Histogram + boxplot of the output distribution | per question |
+| 9 | GSA (Borgonovo δ) → `GSA_results.csv` + `GSA_heatmap.png` | per question |
+
+> **Always run the verification (Layer 6) first.** If the 5 scores match the reference, the
+> full run will too. If they don't, check the kernel/numpy version and that every
+> parameterised database is listed in `PARAMETERISED_DBS`.
+
+The **validation gate** in Layer 5 cross-checks your parameter registry against the actual
+model formulas and **fails loudly** if a parameter is unresolved or silently unused — this
+is what prevents the "I forgot a database, so 4 parameters did nothing" class of bug.
 
 ---
 
@@ -99,13 +111,14 @@ attempts (and the AB scenario engine) non‑reproducible.
 
 ```
 .
-├── MC_workflow.ipynb        # the complete, verified workflow
-├── environment.yml          # conda env (numpy < 2, brightway2, SALib, …)
-├── requirements.txt         # pip alternative
+├── MC_workflow.ipynb         # structured/layered workflow (recommended)
+├── MC_workflow_simple.ipynb  # minimal all-inline variant
+├── environment.yml           # conda env (numpy < 2, brightway2, SALib, …)
+├── requirements.txt          # pip alternative
 ├── examples/
-│   └── PROB_X_t0_short.csv   # 10‑scenario sample matrix for a fast verification run
+│   └── PROB_X_t0_short.csv    # 10-scenario sample matrix for a fast verification run
 ├── docs/
-│   └── WORKFLOW.md          # how to adapt this to your own Brightway2 project
+│   └── WORKFLOW.md           # how to adapt this to your own Brightway2 project
 └── LICENSE
 ```
 

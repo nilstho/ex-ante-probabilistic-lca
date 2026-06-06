@@ -51,82 +51,83 @@ this workflow to *run* the analysis.)
 
 ## 2. The cells you must edit
 
-All case‑specific values live in **Section 0** and **Section 1** of the notebook.
+In the structured notebook (`MC_workflow.ipynb`) all case-specific values live in
+**Layer 1** and **Layer 2**. The simple notebook has the same content inline in Sections 0–1.
 
-### Section 0 — project, databases, functional unit, method
+### Layer 1 — environment binding
 
 ```python
-bd.projects.set_current("FINAL")                       # ← your project name
-
-pv   = bw.Database("SiTaSol_F2v1a")                    # ← your foreground database
-iea  = bw.Database("IEA_PVPS_2020")                    # ← any other DB with formula exchanges
-elec = pv.get("ba8e2884bda6251e448284b8d4e9cc15_copy1") # ← your functional-unit activity
-ipcc = bw.Method(('ILCD 2.0 2018 midpoint',
-                  'climate change', 'climate change total'))  # ← your LCIA method
+PROJECT           = "FINAL"                                   # ← your project name
+PARAMETERISED_DBS = ["SiTaSol_F2v1a", "IEA_PVPS_2020"]        # ← EVERY DB with formula exchanges
+FU_DB, FU_CODE    = "SiTaSol_F2v1a", "ba8e2884...copy1"       # ← your functional-unit activity
+METHOD            = ('ILCD 2.0 2018 midpoint',
+                     'climate change', 'climate change total') # ← your LCIA method
 ```
 
 How to find these:
 
 ```python
-bd.databases                              # list database names
-list(pv)[:5]                              # browse activities; copy the code you want
+bd.databases                                             # list database names
+list(bw.Database("SiTaSol_F2v1a"))[:5]                   # browse activities; copy the code you want
 [m for m in bw.methods if 'climate' in str(m).lower()]   # find the method tuple
 ```
 
-### Section 1 — the parameter samples
+> `PARAMETERISED_DBS` is the cell people get wrong. If a parameter lives in an exchange in
+> a database you don't list, that parameter silently does nothing and its GSA sensitivity
+> becomes a meaningless zero. **Layer 5's validation gate now catches this for you** (see §2.1),
+> but list every relevant database anyway. When in doubt, use `list(bd.databases)` (skipping
+> `biosphere3` is fine — it has no formula exchanges — but scanning it is harmless).
 
-Replace the sampling block with **your** parameters and distributions. Each line draws
-`replications` samples; the variable name **must match the name used in the formulas**.
+### Layer 2 — the parameter registry (the main thing you edit)
 
-```python
-np.random.seed(42)            # keep a fixed seed for reproducibility
-replications = 10000
-
-MyParam = norm.rvs(mean, sd, size=replications)        # normal
-Other   = uniform.rvs(low, width, size=replications)   # uniform on [low, low+width]
-Frac    = rpert(replications, min=.2, mode=.3, max=.7) # PERT (helper defined in the cell)
-Choice  = bernoulli.rvs(0.5, size=replications)        # 0/1 switch
-# ... lognormal, triangular, beta are also imported
-```
-
-Then list the parameters that enter the model (exclude purely intermediate ones such as
-the `pi_*` success‑probabilities used only to draw Bernoulli switches):
+One declarative table is the single source of truth. Add/remove/reorder a parameter by
+editing **one row**; the sampling, CSV columns, GSA labels and `var_level` are all derived.
 
 ```python
-param_names = ['MyParam', 'Other', 'Frac', 'Choice', ...]
+PARAMETERS = [
+  dict(name="MyParam", dist="normal",  args=dict(loc=30, scale=5),               group="project",  desc="..."),
+  dict(name="Frac",    dist="pert",    args=dict(min=.2, mode=.3, max=.7),       group="project",  desc="..."),
+  dict(name="Energy",  dist="lognormal", args=dict(s=np.log(1.22), scale=110),   group="activity", desc="..."),
+  dict(name="pi_x",    dist="pert",    args=dict(min=.5, mode=.7, max=.8),       group=None,       desc="helper"),
+  dict(name="Switch",  dist="bernoulli", args=dict(p="pi_x"),                    group="project",  desc="dependent draw"),
+  # ...
+]
 ```
 
-`var_level` (project vs activity) is only used to label the exported CSV in the
-AB‑compatible format; it does not affect the calculation. Set every entry to `'project'`
-if you don't care about that distinction.
+Rules:
 
-### Section 3 — which databases to scan
+* **`name` must match the variable used in the Brightway2 exchange `formula`.**
+* `dist` is a key of the `SAMPLERS` dict; `args` are that sampler's keyword arguments.
+* A **string** `args` value (`p="pi_x"`) means *use the already-sampled array of that
+  parameter* — this is how dependent draws (a Bernoulli whose probability is itself
+  uncertain) are expressed without leaving the table.
+* `group="project"`/`"activity"` only labels the exported CSV. Set `group=None` for
+  intermediate helpers (the `pi_*`) so they're excluded from the model output and the GSA.
+* **List order = draw order.** Put a dependent entry after the helper it references so the
+  random-number stream is reproducible.
+
+Need another distribution? Add one line to `SAMPLERS` (a `lambda size, **args: ...`), no
+other change required.
+
+### 2.1 Layer 5 — validation gate (you don't edit it, but rely on it)
+
+After indexing the formula exchanges, the notebook parses every formula and cross-checks it
+against your registry:
 
 ```python
-for db in (pv, iea):          # ← include EVERY database that contains formula exchanges
-    for act in db:
-        for exc in act.exchanges():
-            if 'formula' in exc:
-                formula_exchanges.append(exc)
+unresolved = used - declared    # formula needs a parameter you didn't supply  -> raises
+unused     = declared - used    # parameter affects nothing (wrong/missing DB)  -> warns
 ```
 
-**This is the cell people get wrong.** If a parameter lives in an exchange in a database
-you don't scan, that parameter silently does nothing and its GSA sensitivity will be a
-meaningless zero. When in doubt, scan all databases:
+`unresolved` raises immediately; `unused` prints a warning. Either message points straight
+at a mis-typed name or a forgotten database — the bugs that are otherwise invisible until
+the numbers come out subtly wrong.
 
-```python
-for db in (bw.Database(n) for n in bd.databases):
-    ...
-```
+### Layer 6 — verification reference
 
-(Skipping `biosphere3` is fine — it has no formula exchanges — but scanning it is harmless.)
-
-### Section 4 — verification reference
-
-Put a few known‑good scores here (e.g. from a trusted AB run *on a freshly restored
-project*, or from a previous validated Python run) so every future run is checked
-automatically. If you have no reference yet, just run 5 iterations once and record the
-numbers.
+Put a few known-good scores in `ref` (from a trusted run on a freshly restored project, or a
+previously validated Python run) so every future run is checked automatically. If you have
+no reference yet, run 5 iterations once and record the numbers.
 
 ---
 
