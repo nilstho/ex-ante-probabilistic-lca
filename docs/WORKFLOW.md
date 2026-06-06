@@ -4,6 +4,11 @@ This guide explains how the workflow is structured and exactly what to change to
 on a **different** parameterised Brightway2 project. No part of it is specific to the PV
 case study except the concrete names and numbers, which are all isolated in a few cells.
 
+> Context: this pipeline unifies three previously separate steps — presampling (originally
+> **R**), LCA calculation (originally **Activity Browser**), and GSA (originally **MATLAB**) —
+> into one Python notebook. The three steps map to Layers 2–3 (presampling), 5–7 (calculation),
+> and 9 (GSA) below.
+
 ---
 
 ## 0. Mental model
