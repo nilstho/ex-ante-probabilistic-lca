@@ -58,11 +58,25 @@ On a clean database the Python pipeline reproduces the original parameter approa
 
 ---
 
-## Example results — III‑V/Si tandem PV (10,000 iterations)
+## Example results — III‑V/Si tandem PV
 
-Global warming impact of 1 kWh of electricity (ILCD 2.0 climate change total), propagating
-**all 26 uncertain factors** — including the five `pₓ` success‑probabilities, which enter the
-analysis indirectly via the binary design choices they parameterise (the thesis's full t=0 model).
+Two cases, simple → full (the notebook is organised the same way): first the 4‑parameter module
+case, then the complete 26‑factor model. Impact = global warming of 1 kWh of electricity
+(ILCD 2.0 climate change total).
+
+### Case A — simple: module performance (4 parameters)
+
+The reduced exercise varying only the generation parameters `Eff_PV`, `PR_PV`, `LT`, `Irrad`.
+The score is purely multiplicative in the four, so the δ **ranking is reproducible regardless of
+background state** (only the absolute scale is baseline‑dependent): **`LT ≫ Irrad > Eff_PV > PR_PV`**.
+A clean starting point — lifetime dominates because it sets the per‑kWh denominator.
+
+![Simplified 4-parameter case](docs/gsa_elec_4param.png)
+
+### Case B — full model (26 factors)
+
+All 21 direct parameters **plus** the five `pₓ` success‑probabilities (the binary design choices'
+chances), which enter indirectly via the switches they parameterise (the thesis's full t=0 model).
 
 **Output distribution** (kg CO₂‑eq / kWh): mean **0.200**, median **0.175**, P5 **0.106**,
 P95 **0.405** — right‑skewed, with a long tail toward higher impacts.
@@ -85,22 +99,12 @@ P95 **0.405** — right‑skewed, with a long tail toward higher impacts.
 | 9 | `* pi_CuSint` | 0.080 | 0.006 | P(laser sintering Cu) |
 
 Lifetime and the discrete copper‑sintering choice dominate; the rest contribute modestly. Full
-table: [`examples/gsa_delta_results.csv`](examples/gsa_delta_results.csv). Regenerate everything
-by running the notebook end to end.
+table: [`examples/gsa_delta_results.csv`](examples/gsa_delta_results.csv).
 
 **Output vs. each input** (scatter screening — the visual companion to δ; a clear trend = influential,
 a flat cloud = negligible, two vertical stripes = a binary choice):
 
 ![GSA scatter grid](docs/gsa_scatter.png)
-
-### Simplified 4‑parameter case (module performance only)
-
-The reduced exercise for the **electricity** functional unit, varying only `Eff_PV`, `PR_PV`,
-`LT`, `Irrad`. Here the score is purely multiplicative in the four, so the δ **ranking is
-reproducible regardless of background state** (only the absolute scale is baseline‑dependent):
-`LT ≫ Irrad > Eff_PV > PR_PV`.
-
-![Simplified 4-parameter case](docs/gsa_elec_4param.png)
 
 ### How this compares to the thesis (Blanco 2022, Ch. 6)
 
@@ -138,28 +142,24 @@ jupyter lab MC_workflow.ipynb
 | **`MC_workflow.ipynb`** (recommended) | Structured/layered. All case-specific settings live in two layers at the top (environment binding + a declarative **parameter registry**); a validation gate auto-checks parameters against the model formulas. Best for adapting to new cases. |
 | `MC_workflow_simple.ipynb` | Minimal, everything inline. Good for a quick read of the bare mechanism. |
 
-Run the structured notebook top to bottom — the layers:
+Run it top to bottom — it goes from **simple to full**:
 
-| Layer | Purpose | Edit? |
+| Section | Purpose | Edit? |
 |---|---|---|
-| 1 | Imports, **numpy‑version check**, project/databases/FU/method | per project |
-| 2 | **Parameter registry** — one declarative table of parameters + distributions | **most often** |
-| 3 | Presampling → `PROB_X_t0.csv` (generic; skip if you have it) | rarely |
-| 4 | Load the sample matrix `X` | never |
-| 5 | Index formula exchanges in **all** DBs + **validation gate** + introspection table | never |
-| 6 | Engine + **verification** (5 scenarios vs the reproducible reference) | set ref once |
-| 7 | Full Monte Carlo run (10 000 iterations) → `Model_results_python.csv` | never |
-| 8 | Histogram + boxplot **+ scatter screening** of the output | per question |
-| 9 | GSA (Borgonovo δ) → `GSA_results.csv` + `GSA_heatmap.png` | per question |
-| Appendix | Simplified 4‑parameter (module‑performance) case | optional |
+| 1 | Imports, **numpy‑version check** | — |
+| 2 | Environment binding — project / databases / FU / method | per project |
+| 3 | **Shared engine** — samplers + the Monte‑Carlo loop + formula‑exchange index | never |
+| **Part A** | **Simple case: module performance (4 parameters)** — presample, run, MC + scatter, GSA | start here |
+| **Part B** | **Full model (26 factors):** registry → presample → load → **validation gate** + introspection → **verification** → full MC run → MC + scatter → GSA heatmap | **registry edited most** |
 
-> **Always run the verification (Layer 6) first.** If the 5 scores match the reference, the
-> full run will too. If they don't, check the kernel/numpy version and that every
-> parameterised database is listed in `PARAMETERISED_DBS`.
+> **In Part B, always run the verification first.** If the 5 scores match the reference, the full
+> run will too. If they don't, check the kernel/numpy version and that every parameterised database
+> is listed in `PARAMETERISED_DBS`.
 
-The **validation gate** in Layer 5 cross-checks your parameter registry against the actual
-model formulas and **fails loudly** if a parameter is unresolved or silently unused — this
-is what prevents the "I forgot a database, so 4 parameters did nothing" class of bug.
+The **validation gate** (Part B) cross-checks your parameter registry against the actual model
+formulas and **fails loudly** if a parameter is unresolved or silently unused — preventing the
+"I forgot a database, so some parameters did nothing" class of bug. New users should start with the
+two self‑contained notebooks in [`examples/`](examples/).
 
 ---
 
