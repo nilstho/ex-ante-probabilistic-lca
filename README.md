@@ -61,29 +61,48 @@ On a clean database the Python pipeline reproduces the original parameter approa
 ## Example results — III‑V/Si tandem PV (10,000 iterations)
 
 Global warming impact of 1 kWh of electricity (ILCD 2.0 climate change total), propagating
-all 21 uncertain parameters.
+**all 26 uncertain factors** — including the five `pₓ` success‑probabilities, which enter the
+analysis indirectly via the binary design choices they parameterise (the thesis's full t=0 model).
 
 **Output distribution** (kg CO₂‑eq / kWh): mean **0.200**, median **0.175**, P5 **0.106**,
 P95 **0.405** — right‑skewed, with a long tail toward higher impacts.
 
 ![Monte Carlo distribution](docs/mc_distribution.png)
 
-**Global sensitivity (Borgonovo δ)** — which parameters drive that spread:
+**Global sensitivity (Borgonovo δ)** — which factors drive that spread (`*` = indirect `pₓ`):
 
 ![GSA delta heatmap](docs/gsa_delta_heatmap.png)
 
-| Rank | Parameter | δ | S1 | Meaning |
+| Rank | Factor | δ | S1 | Meaning |
 |---|---|---|---|---|
-| 1 | `LT` | 0.216 | 0.171 | Panel lifetime (sets the kWh denominator) |
-| 2 | `bin_CuSint` | 0.185 | 0.382 | Cu laser‑vs‑chemical sintering choice (largest first‑order variance share) |
-| 3 | `P_movpe_tool` | 0.144 | 0.068 | MOVPE tool power load |
-| 4 | `RT_movpe` | 0.125 | 0.052 | MOVPE runtime |
-| 5 | `bin_FM` | 0.109 | 0.055 | Front‑metal nanoink choice |
-| 6 | `Irrad` | 0.104 | 0.038 | Irradiation |
+| 1 | `LT` | 0.220 | 0.174 | Panel lifetime (sets the per‑kWh denominator) |
+| 2 | `bin_CuSint` | 0.194 | 0.380 | Cu laser‑vs‑chemical sintering choice (largest first‑order variance share) |
+| 3 | `P_movpe_tool` | 0.137 | 0.069 | MOVPE tool power load |
+| 4 | `RT_movpe` | 0.126 | 0.045 | MOVPE runtime |
+| 5 | `bin_FM` | 0.121 | 0.053 | Front‑metal nanoink choice |
+| 6 | `Irrad` | 0.107 | 0.030 | Irradiation |
+| 7 | `* pi_FM` | 0.082 | 0.010 | P(Cu vs Ag nanoink) |
+| 9 | `* pi_CuSint` | 0.080 | 0.006 | P(laser sintering Cu) |
 
-Lifetime and the discrete copper‑sintering choice dominate; the remaining parameters each
-contribute modestly. Full table: [`examples/gsa_delta_results.csv`](examples/gsa_delta_results.csv).
-Regenerate everything by running the notebook end to end.
+Lifetime and the discrete copper‑sintering choice dominate; the rest contribute modestly. Full
+table: [`examples/gsa_delta_results.csv`](examples/gsa_delta_results.csv). Regenerate everything
+by running the notebook end to end.
+
+### How this compares to the thesis (Blanco 2022, Ch. 6)
+
+**Consistent, not identical.** The impact magnitude (~0.20 kg CO₂‑eq/kWh) matches the thesis's
+t=0 snapshot, and the same *set* of factors dominates (lifetime, MOVPE power & runtime, the
+front‑metal choice). The **ordering differs** — the thesis t=0 ranks `P_movpe_tool` first and finds
+the `pₓ` more influential than the binaries, whereas we get `LT` first and the binaries above their
+`pₓ`. This is structural, not a parameter‑selection issue:
+
+- **Functional unit.** Per‑kWh impact ∝ `1/(LT·Irrad·Eff·PR)`, so lifetime/irradiation scale the
+  *whole* footprint while `P_movpe_tool` scales only the MOVPE branch — elevating `LT` here.
+- **Discrete‑jump size.** `bin_CuSint` injects a large discrete impact (laser‑sintering reagents),
+  making the binary dominate and diluting its `pₓ`. The thesis itself notes this binary‑vs‑`pₓ`
+  ordering flips between its case studies, i.e. it is model‑specific.
+- **Different model.** This runs the reconstructed `SiTaSol_F2v1a`/`IEA_PVPS_2020` databases with
+  ILCD 2.0, not the thesis's exact integrated LCA — so exact δ values aren't expected to coincide.
 
 ---
 
