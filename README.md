@@ -58,6 +58,35 @@ On a clean database the Python pipeline reproduces the original parameter approa
 
 ---
 
+## Example results — III‑V/Si tandem PV (10,000 iterations)
+
+Global warming impact of 1 kWh of electricity (ILCD 2.0 climate change total), propagating
+all 21 uncertain parameters.
+
+**Output distribution** (kg CO₂‑eq / kWh): mean **0.200**, median **0.175**, P5 **0.106**,
+P95 **0.405** — right‑skewed, with a long tail toward higher impacts.
+
+![Monte Carlo distribution](docs/mc_distribution.png)
+
+**Global sensitivity (Borgonovo δ)** — which parameters drive that spread:
+
+![GSA delta heatmap](docs/gsa_delta_heatmap.png)
+
+| Rank | Parameter | δ | S1 | Meaning |
+|---|---|---|---|---|
+| 1 | `LT` | 0.216 | 0.171 | Panel lifetime (sets the kWh denominator) |
+| 2 | `bin_CuSint` | 0.185 | 0.382 | Cu laser‑vs‑chemical sintering choice (largest first‑order variance share) |
+| 3 | `P_movpe_tool` | 0.144 | 0.068 | MOVPE tool power load |
+| 4 | `RT_movpe` | 0.125 | 0.052 | MOVPE runtime |
+| 5 | `bin_FM` | 0.109 | 0.055 | Front‑metal nanoink choice |
+| 6 | `Irrad` | 0.104 | 0.038 | Irradiation |
+
+Lifetime and the discrete copper‑sintering choice dominate; the remaining parameters each
+contribute modestly. Full table: [`examples/gsa_delta_results.csv`](examples/gsa_delta_results.csv).
+Regenerate everything by running the notebook end to end.
+
+---
+
 ## Quick start
 
 ```bash
