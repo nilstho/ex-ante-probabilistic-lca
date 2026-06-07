@@ -88,6 +88,20 @@ Lifetime and the discrete copper‑sintering choice dominate; the rest contribut
 table: [`examples/gsa_delta_results.csv`](examples/gsa_delta_results.csv). Regenerate everything
 by running the notebook end to end.
 
+**Output vs. each input** (scatter screening — the visual companion to δ; a clear trend = influential,
+a flat cloud = negligible, two vertical stripes = a binary choice):
+
+![GSA scatter grid](docs/gsa_scatter.png)
+
+### Simplified 4‑parameter case (module performance only)
+
+The reduced exercise for the **electricity** functional unit, varying only `Eff_PV`, `PR_PV`,
+`LT`, `Irrad`. Here the score is purely multiplicative in the four, so the δ **ranking is
+reproducible regardless of background state** (only the absolute scale is baseline‑dependent):
+`LT ≫ Irrad > Eff_PV > PR_PV`.
+
+![Simplified 4-parameter case](docs/gsa_elec_4param.png)
+
 ### How this compares to the thesis (Blanco 2022, Ch. 6)
 
 **Consistent, not identical.** The impact magnitude (~0.20 kg CO₂‑eq/kWh) matches the thesis's
@@ -135,8 +149,9 @@ Run the structured notebook top to bottom — the layers:
 | 5 | Index formula exchanges in **all** DBs + **validation gate** + introspection table | never |
 | 6 | Engine + **verification** (5 scenarios vs the reproducible reference) | set ref once |
 | 7 | Full Monte Carlo run (10 000 iterations) → `Model_results_python.csv` | never |
-| 8 | Histogram + boxplot of the output distribution | per question |
+| 8 | Histogram + boxplot **+ scatter screening** of the output | per question |
 | 9 | GSA (Borgonovo δ) → `GSA_results.csv` + `GSA_heatmap.png` | per question |
+| Appendix | Simplified 4‑parameter (module‑performance) case | optional |
 
 > **Always run the verification (Layer 6) first.** If the 5 scores match the reference, the
 > full run will too. If they don't, check the kernel/numpy version and that every
@@ -168,14 +183,30 @@ attempts (and the AB scenario engine) non‑reproducible.
 ├── environment.yml           # conda env (numpy < 2, brightway2, SALib, …)
 ├── requirements.txt          # pip alternative
 ├── examples/
-│   └── PROB_X_t0_short.csv    # 10-scenario sample matrix for a fast verification run
+│   ├── tea_demo.ipynb         # self-contained teaching example (cup of tea)
+│   ├── ev_demo.ipynb          # self-contained teaching example (electric vehicle)
+│   ├── README.md              # what the examples teach
+│   ├── figs/                  # rendered analysis dashboards
+│   ├── PROB_X_t0_short.csv    # 10-scenario sample matrix for a fast verification run
+│   └── gsa_delta_results.csv  # GSA δ table from the full 10k run
 ├── docs/
-│   └── WORKFLOW.md           # how to adapt this to your own Brightway2 project
+│   ├── WORKFLOW.md            # how to adapt this to your own Brightway2 project
+│   ├── gsa_delta_heatmap.png  # GSA results (figures used in this README)
+│   ├── gsa_scatter.png
+│   ├── gsa_elec_4param.png
+│   └── mc_distribution.png
 └── LICENSE
 ```
 
 The Brightway2 project backup, ecoinvent databases and course materials are **not**
 included (licensing + size). Point the notebook at your own project.
+
+### Educational examples
+
+New to the workflow? Start with [`examples/`](examples/) — two **self‑contained** notebooks
+(cup of tea, electric vehicle) that run the identical presample → Monte Carlo → GSA machinery
+on toy models with **no ecoinvent or project backup required**, each with the full set of
+visuals. See [`examples/README.md`](examples/README.md).
 
 ---
 
