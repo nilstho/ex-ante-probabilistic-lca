@@ -6,8 +6,84 @@ case study except the concrete names and numbers, which are all isolated in a fe
 
 > Context: this pipeline unifies three previously separate steps — presampling (originally
 > **R**), LCA calculation (originally **Activity Browser**), and GSA (originally **MATLAB**) —
-> into one Python notebook. The three steps map to Layers 2–3 (presampling), 5–7 (calculation),
-> and 9 (GSA) below.
+> into one Python notebook.
+
+---
+
+## When to use this (probabilistic) approach — and when scenarios make more sense
+
+Before reaching for Monte Carlo, decide whether your question is really probabilistic. The
+two approaches answer different questions and are **complementary**, not competing.
+
+| | **Probabilistic (this workflow)** | **Scenario** |
+|---|---|---|
+| Uncertainty as… | probability distributions | a few discrete, internally-consistent "states of the world" |
+| Answers… | *"How uncertain is the result, and what drives it?"* | *"What happens under configuration A vs B?"* |
+| Output | a distribution (mean, P5–P95, P(exceed threshold)) + a sensitivity ranking | one number per scenario, side by side |
+
+**Use the probabilistic approach when:**
+
+- you can defensibly assign probabilities — even subjective/Bayesian ones (expert elicitation,
+  lab data, "succeeded in 4 of 6 trials → PERT prior");
+- the factor is a continuous physical quantity with natural spread (lifetime, irradiation,
+  energy use, emission factors);
+- you want to quantify total uncertainty and make risk statements;
+- you want **Global Sensitivity Analysis** — GSA needs the probabilistic setup, and screening
+  many interacting unknowns at once is its killer use;
+- there are too many uncertain factors to enumerate as scenarios (n factors → 2ⁿ scenarios).
+
+> ⚠ Risk: **false precision.** If the distributions are guesses, the tidy P5–P95 is misleading;
+> and averaging over a distribution can hide two structurally different futures.
+
+**Use a scenario approach when:**
+
+- the uncertainty is **deep / structural / "Knightian"** — no defensible probability exists
+  (a future regulatory regime, the 2050 grid mix, a disruptive technology);
+- the factor is a **discrete, mutually-exclusive choice** that defines a qualitatively different
+  system (Cu-vs-Ag metallization, recycling vs landfill, supplier A vs B);
+- the goal is **communication and decision-making** — stakeholders act on "with vs without
+  recycling," not on a probability density;
+- you want to **bound** the space (best / worst / business-as-usual).
+
+> ⚠ Risk: **arbitrary selection** — you only learn about the futures you chose to define, and
+> "equally plausible" scenarios quietly assume a uniform probability.
+
+### They are complementary — and this framework uses both
+
+The Safe-and-Sustainable-by-Design framework this repo implements does **not** pick one. It:
+
+1. **parametrizes everything**, even discrete choices, as distributions — a yes/no choice becomes
+   a Bernoulli with an uncertain probability `pₓ` (the `bin_*`/`pi_*` pattern in the registry);
+2. runs **Monte Carlo + GSA to *screen*** many unknowns down to the few that are both
+   **influential and still uncertain**;
+3. turns *those few* into **"sensitive scenarios"** for design guidance.
+
+So: **use the probabilistic GSA to find out *which* scenarios are worth defining; use scenarios
+to decide and communicate.** GSA is the bridge — it stops you both from drowning in dozens of
+distributions and from hand-picking scenarios that turn out not to matter.
+
+### A practical decision rule
+
+```
+Continuous physical parameter, probabilities estimable   -> distribution (this workflow)
+Discrete choice, chance of each estimable                -> Bernoulli in the MC (report as a scenario)
+Discrete choice, NO defensible probability (deep unc.)   -> scenario, kept separate
+Goal = rank drivers / total uncertainty                  -> probabilistic + GSA
+Goal = compare distinct futures / communicate            -> scenarios
+Many interacting unknowns, early R&D screening           -> probabilistic first, scenarios on the survivors
+```
+
+**Common hybrid:** run Monte Carlo on the continuous parameters *within* each of a few discrete
+scenarios — e.g. "BEV on a 2030 grid" vs "BEV on a 2050 grid," each as a distribution. That keeps
+the deep/structural uncertainty as transparent scenarios while still quantifying parametric spread
+inside each.
+
+**Converting between the two** (both directions are easy here):
+
+- *Scenario → probabilistic:* replace a discrete choice with a `bernoulli` parameter whose `p` is
+  your estimated chance of that choice (optionally with `p` itself uncertain via a `pi_*` factor).
+- *Probabilistic → scenario:* fix an influential factor at representative low/central/high values
+  and read off the result at each — exactly what "sensitive scenarios" are.
 
 ---
 
@@ -56,10 +132,10 @@ this workflow to *run* the analysis.)
 
 ## 2. The cells you must edit
 
-In the structured notebook (`MC_workflow.ipynb`) all case-specific values live in
-**Layer 1** and **Layer 2**. The simple notebook has the same content inline in Sections 0–1.
+In the structured notebook (`MC_workflow.ipynb`) all case-specific values live in **Section 2
+(environment binding)** and **Part B's registry**. The simple notebook has the same content inline.
 
-### Layer 1 — environment binding
+### Environment binding (Section 2)
 
 ```python
 PROJECT           = "FINAL"                                   # ← your project name
@@ -79,11 +155,11 @@ list(bw.Database("SiTaSol_F2v1a"))[:5]                   # browse activities; co
 
 > `PARAMETERISED_DBS` is the cell people get wrong. If a parameter lives in an exchange in
 > a database you don't list, that parameter silently does nothing and its GSA sensitivity
-> becomes a meaningless zero. **Layer 5's validation gate now catches this for you** (see §2.1),
+> becomes a meaningless zero. **The validation gate now catches this for you** (see below),
 > but list every relevant database anyway. When in doubt, use `list(bd.databases)` (skipping
 > `biosphere3` is fine — it has no formula exchanges — but scanning it is harmless).
 
-### Layer 2 — the parameter registry (the main thing you edit)
+### The parameter registry (Part B — the main thing you edit)
 
 One declarative table is the single source of truth. Add/remove/reorder a parameter by
 editing **one row**; the sampling, CSV columns, GSA labels and `var_level` are all derived.
@@ -93,7 +169,7 @@ PARAMETERS = [
   dict(name="MyParam", dist="normal",  args=dict(loc=30, scale=5),               group="project",  desc="..."),
   dict(name="Frac",    dist="pert",    args=dict(min=.2, mode=.3, max=.7),       group="project",  desc="..."),
   dict(name="Energy",  dist="lognormal", args=dict(s=np.log(1.22), scale=110),   group="activity", desc="..."),
-  dict(name="pi_x",    dist="pert",    args=dict(min=.5, mode=.7, max=.8),       group=None,       desc="helper"),
+  dict(name="pi_x",    dist="pert",    args=dict(min=.5, mode=.7, max=.8),       group="project",  indirect=True, desc="P(switch)"),
   dict(name="Switch",  dist="bernoulli", args=dict(p="pi_x"),                    group="project",  desc="dependent draw"),
   # ...
 ]
@@ -101,34 +177,39 @@ PARAMETERS = [
 
 Rules:
 
-* **`name` must match the variable used in the Brightway2 exchange `formula`.**
+* **`name` must match the variable used in the Brightway2 exchange `formula`** — *unless* it is
+  an indirect factor (see below).
 * `dist` is a key of the `SAMPLERS` dict; `args` are that sampler's keyword arguments.
 * A **string** `args` value (`p="pi_x"`) means *use the already-sampled array of that
   parameter* — this is how dependent draws (a Bernoulli whose probability is itself
   uncertain) are expressed without leaving the table.
-* `group="project"`/`"activity"` only labels the exported CSV. Set `group=None` for
-  intermediate helpers (the `pi_*`) so they're excluded from the model output and the GSA.
+* `group="project"`/`"activity"` only labels the exported CSV. Use `group=None` only to drop a
+  factor from the analysis entirely.
+* **Indirect factors are kept.** A `pi_*` probability never appears in a formula — it only sets
+  the chance of its `bin_*` switch — so mark it `indirect=True`. It still enters the GSA (the δ
+  picks up its influence *through* the switch), and the validation gate won't flag it.
 * **List order = draw order.** Put a dependent entry after the helper it references so the
   random-number stream is reproducible.
 
 Need another distribution? Add one line to `SAMPLERS` (a `lambda size, **args: ...`), no
 other change required.
 
-### 2.1 Layer 5 — validation gate (you don't edit it, but rely on it)
+### Validation gate (Part B — you don't edit it, but rely on it)
 
 After indexing the formula exchanges, the notebook parses every formula and cross-checks it
 against your registry:
 
 ```python
-unresolved = used - declared    # formula needs a parameter you didn't supply  -> raises
-unused     = declared - used    # parameter affects nothing (wrong/missing DB)  -> warns
+unresolved = used - declared                 # formula needs a parameter you didn't supply  -> raises
+indirect   = (declared & INDIRECT) - used    # pi_* probabilities: act via their bin_* switch -> noted
+unused     = declared - used - INDIRECT       # parameter affects nothing (wrong/missing DB)   -> warns
 ```
 
-`unresolved` raises immediately; `unused` prints a warning. Either message points straight
-at a mis-typed name or a forgotten database — the bugs that are otherwise invisible until
-the numbers come out subtly wrong.
+`unresolved` raises immediately; `unused` prints a warning; `indirect` is just reported. Either
+problem message points straight at a mis-typed name or a forgotten database — the bugs that are
+otherwise invisible until the numbers come out subtly wrong.
 
-### Layer 6 — verification reference
+### Verification reference (Part B)
 
 Put a few known-good scores in `ref` (from a trusted run on a freshly restored project, or a
 previously validated Python run) so every future run is checked automatically. If you have
@@ -168,8 +249,8 @@ def rpert(size, min, mode, max, shape=4):
   non‑linear / non‑monotonic relationships, which is why it suits LCA models with switches.
 - **`S1`** — first‑order Sobol index (variance‑based), provided for comparison.
 
-`*_conf` columns are bootstrap confidence intervals. Rank parameters by `delta`; the
-heatmap in Section 7 visualises this.
+`*_conf` columns are bootstrap confidence intervals. Rank parameters by `delta`; the heatmap,
+bar chart and scatter screening in Part B visualise this.
 
 > GSA needs enough samples to be stable. For ~20 parameters, use **≥ 1000** iterations
 > (the case study uses 10 000). Check that the `delta_conf` intervals are small relative
